@@ -1,0 +1,149 @@
+# ══════════════════════════════════════════════════
+# LANGCHAIN CHEAT SHEET
+# Formula: PROMPT | LLM | PARSER
+# ══════════════════════════════════════════════════
+
+# ── IMPORTS ───────────────────────────────────────
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.tools import tool
+from langgraph.prebuilt import create_react_agent
+
+# ── THE AI ────────────────────────────────────────
+llm = ChatGroq(model="llama-3.3-70b-versatile")
+
+# ── LEVEL 1: Simple call ──────────────────────────
+response = llm.invoke(messages)
+
+# ── LEVEL 2: Chain ────────────────────────────────
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a {role}"),
+    ("human", "{question}")
+])
+parser = StrOutputParser()
+chain = prompt | llm | parser
+result = chain.invoke({"role": "analyst", "question": "..."})
+
+# ── LEVEL 3: Chain with Memory ────────────────────
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are an assistant"),
+    MessagesPlaceholder(variable_name="history"),  # slots history in
+    ("human", "{question}")
+])
+chain = prompt | llm | parser
+history = []
+# In your loop:
+result = chain.invoke({"history": history, "question": "..."})
+history.append(HumanMessage(content="your question"))
+history.append(AIMessage(content=result))
+
+# ── LEVEL 4: Agent with Tools ─────────────────────
+@tool
+def my_tool() -> str:
+    """What this tool does — AI reads this description!"""
+    return "data"
+
+tools = [my_tool]
+agent = create_react_agent(llm, tools)
+response = agent.invoke({"messages": [("human", "your goal")]})
+final = response["messages"][-1].content
+
+
+##  The Golden Rules to Remember:
+''''''
+Rule 1: Always PROMPT | LLM | PARSER
+Rule 2: Placeholders go in {curly braces}
+Rule 3: @tool turns any function into an agent tool
+Rule 4: history = [] stores conversation memory
+Rule 5: invoke() runs everything
+''''''
+# ══════════════════════════════════════════════════
+# ORACLE + AI CONNECTION PATTERN
+# ══════════════════════════════════════════════════
+
+import oracledb
+
+# 1. Enable thick mode (needed for older Oracle)
+oracledb.init_oracle_client(lib_dir=r"C:\path\to\instantclient")
+
+# 2. Connect to Oracle
+conn = oracledb.connect(user="HR", password="hr", dsn="localhost:1521/xe")
+
+# 3. Run a query
+cursor = conn.cursor()
+cursor.execute("SELECT * FROM EMPLOYEES")
+rows = cursor.fetchall()
+columns = [col[0] for col in cursor.description]
+
+# 4. Always close when done
+cursor.close()
+conn.close()
+
+# 5. Make it an agent tool
+@tool
+def my_oracle_tool() -> str:
+    """Description of what this tool does — AI reads this!"""
+    return run_query("SELECT * FROM MY_TABLE")
+
+    # ══════════════════════════════════════════════════
+# RAG PATTERN — Read any PDF with AI
+# ══════════════════════════════════════════════════
+
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import SentenceTransformerEmbeddings
+
+# 1. Load PDF
+loader = PyPDFLoader("your_file.pdf")
+documents = loader.load()
+
+# 2. Split into chunks
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=500,
+    chunk_overlap=50
+)
+chunks = splitter.split_documents(documents)
+
+# 3. Create embeddings and store
+embeddings = SentenceTransformerEmbeddings(
+    model_name="all-MiniLM-L6-v2"
+)
+vectorstore = Chroma.from_documents(
+    documents=chunks,
+    embedding=embeddings,
+    persist_directory="./chroma_db"
+)
+
+# 4. Search tool
+@tool
+def search_document(query: str) -> str:
+    """Searches the document for relevant information"""
+    results = vectorstore.similarity_search(query, k=3)
+    return "\n\n".join([doc.page_content for doc in results])
+```
+
+---
+
+## ✅ Class 10 Complete — What You Built:
+
+- ✅ Loaded a real PDF into Python
+- ✅ Split it into searchable chunks
+- ✅ Created embeddings and stored in ChromaDB
+- ✅ Built a search tool the agent uses automatically
+- ✅ Agent answers questions from YOUR document!
+
+---
+
+## 🚀 What's Coming in Class 11 — The BIG One:
+
+We combine EVERYTHING into one super agent:
+```
+Oracle DB   +   HR Policy PDF   +   AI Agent
+     ↓                ↓                ↓
+Real data       Document knowledge    Reasoning
+
+= One agent that answers ANY question
+  about your company data AND policies!
